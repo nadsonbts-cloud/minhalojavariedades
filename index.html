@@ -156,4 +156,264 @@
             align-items: center; 
             justify-content: center; 
             cursor: pointer; 
-            font-size
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+        .btn-add:active { transform: scale(0.9); }
+
+        /* --- CARRINHO FLUTUANTE --- */
+        .floating-cart {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            justify-content: space-between;
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+
+        .cart-icon-group { display: flex; align-items: center; gap: 10px; }
+        .cart-count-badge { 
+            background: var(--primary); 
+            padding: 2px 8px; 
+            border-radius: 12px; 
+            font-size: 0.8rem; 
+            font-weight: bold;
+        }
+        .cart-total-preview { font-weight: 600; font-size: 1rem; }
+
+        /* --- MODAL (Janela do Carrinho) --- */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            backdrop-filter: blur(3px);
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            height: 85vh;
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            animation: slideUpModal 0.3s ease-out;
+        }
+        @keyframes slideUpModal { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 1.5rem; font-weight: 800; }
+        .btn-close { background: #f0f0f0; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; }
+        
+        .cart-list { flex: 1; overflow-y: auto; margin-bottom: 20px; }
+        .cart-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 15px 0; 
+            border-bottom: 1px solid #f0f0f0; 
+        }
+        .item-info strong { display: block; margin-bottom: 4px; }
+        .item-controls { display: flex; align-items: center; gap: 10px; background: #f9f9f9; padding: 5px; border-radius: 8px; }
+        .btn-qty { border: none; background: white; width: 28px; height: 28px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; font-weight: bold; }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Variedades <span>& Cia</span></h1>
+    </header>
+
+    <div class="categories-container">
+        <div class="categories">
+            <button class="cat-btn active" onclick="filterProducts('todos')">🔥 Tudo</button>
+            <button class="cat-btn" onclick="filterProducts('acessorios')">💍 Acessórios</button>
+            <button class="cat-btn" onclick="filterProducts('utilidades')">🏠 Casa</button>
+            <button class="cat-btn" onclick="filterProducts('maquiagem')">💄 Maquiagem</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="product-grid" id="productGrid">
+            </div>
+    </div>
+
+    <div class="floating-cart" id="floatingCart" onclick="toggleCart()" style="display: none;">
+        <div class="cart-icon-group">
+            <span>🛒</span>
+            <span class="cart-count-badge" id="cartCount">0</span>
+            <span>Ver Sacola</span>
+        </div>
+        <div class="cart-total-preview">R$ <span id="cartTotalMain">0,00</span></div>
+    </div>
+
+    <div class="modal-overlay" id="cartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Sua Sacola</div>
+                <button class="btn-close" onclick="toggleCart()">✕</button>
+            </div>
+            
+            <div class="cart-list" id="cartItems">
+                </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1.1rem; font-weight: bold;">
+                    <span>Total</span>
+                    <span>R$ <span id="cartTotalModal">0,00</span></span>
+                </div>
+                <button class="btn-whatsapp" onclick="sendToWhatsApp()">
+                    Finalizar Pedido no WhatsApp ➜
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- CONFIGURAÇÃO (Edite aqui) --- */
+        const WHATSAPP_NUMBER = "5573999999999"; // SEU NÚMERO
+
+        const products = [
+            { id: 1, name: "Kit Pincéis Sereia", price: 25.00, category: "maquiagem", img: "https://via.placeholder.com/300?text=Pinceis" },
+            { id: 2, name: "Garrafa Térmica Inox", price: 35.00, category: "utilidades", img: "https://via.placeholder.com/300?text=Garrafa" },
+            { id: 3, name: "Brinco Argola Ouro", price: 12.00, category: "acessorios", img: "https://via.placeholder.com/300?text=Brinco" },
+            { id: 4, name: "Organizador de Pia", price: 18.50, category: "utilidades", img: "https://via.placeholder.com/300?text=Organizador" },
+            { id: 5, name: "Paleta Nude Premium", price: 45.90, category: "maquiagem", img: "https://via.placeholder.com/300?text=Sombra" },
+            { id: 6, name: "Relógio Digital LED", price: 29.90, category: "acessorios", img: "https://via.placeholder.com/300?text=Relogio" },
+            { id: 7, name: "Pote Hermético Vidro", price: 22.00, category: "utilidades", img: "https://via.placeholder.com/300?text=Pote" },
+            { id: 8, name: "Batom Matte Vermelho", price: 15.00, category: "maquiagem", img: "https://via.placeholder.com/300?text=Batom" },
+        ];
+
+        let cart = [];
+
+        function init() { renderProducts(products); }
+
+        function renderProducts(list) {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = list.map(p => `
+                <div class="product-card">
+                    <div class="img-container">
+                        <img src="${p.img}" alt="${p.name}" class="product-img">
+                    </div>
+                    <div class="card-info">
+                        <span class="category-tag">${p.category}</span>
+                        <h3 class="product-title">${p.name}</h3>
+                        <div class="card-footer">
+                            <span class="product-price">R$ ${p.price.toFixed(2).replace('.',',')}</span>
+                            <button class="btn-add" onclick="addToCart(${p.id})">+</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterProducts(cat) {
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderProducts(cat === 'todos' ? products : products.filter(p => p.category === cat));
+        }
+
+        function addToCart(id) {
+            const item = cart.find(i => i.id === id);
+            if (item) item.qty++;
+            else cart.push({ ...products.find(p => p.id === id), qty: 1 });
+            updateCart();
+            // Efeito visual (opcional: vibrar celular)
+            if(navigator.vibrate) navigator.vibrate(50);
+        }
+
+        function updateCart() {
+            const totalQty = cart.reduce((a, b) => a + b.qty, 0);
+            const totalVal = cart.reduce((a, b) => a + (b.price * b.qty), 0);
+            const totalStr = totalVal.toFixed(2).replace('.', ',');
+
+            document.getElementById('cartCount').innerText = totalQty;
+            document.getElementById('cartTotalMain').innerText = totalStr;
+            document.getElementById('cartTotalModal').innerText = totalStr;
+            
+            // Mostrar barra flutuante apenas se tiver item
+            document.getElementById('floatingCart').style.display = totalQty > 0 ? 'flex' : 'none';
+
+            // Renderizar lista do modal
+            document.getElementById('cartItems').innerHTML = cart.map(i => `
+                <div class="cart-item">
+                    <div class="item-info">
+                        <strong>${i.name}</strong>
+                        <small>R$ ${i.price.toFixed(2).replace('.',',')}</small>
+                    </div>
+                    <div class="item-controls">
+                        <button class="btn-qty" onclick="changeQty(${i.id}, -1)">-</button>
+                        <span>${i.qty}</span>
+                        <button class="btn-qty" onclick="changeQty(${i.id}, 1)">+</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            if(cart.length === 0) {
+                document.getElementById('cartItems').innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Sua sacola está vazia.</p>';
+            }
+        }
+
+        function changeQty(id, delta) {
+            const item = cart.find(i => i.id === id);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) cart = cart.filter(i => i.id !== id);
+                updateCart();
+            }
+        }
+
+        function toggleCart() {
+            const modal = document.getElementById('cartModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function sendToWhatsApp() {
+            if (cart.length === 0) return;
+            let msg = "*PEDIDO NOVA LOJA*\n\n";
+            cart.forEach(i => msg += `▪ ${i.qty}x ${i.name}\n`);
+            const total = cart.reduce((a, b) => a + (b.price * b.qty), 0);
+            msg += `\n*TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*`;
+            msg += "\n\nOlá, gostaria de finalizar este pedido!";
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // Fechar ao clicar fora
+        document.getElementById('cartModal').onclick = function(e) {
+            if(e.target === this) toggleCart();
+        }
+
+        init();
+    </script>
+</body>
+</html>
