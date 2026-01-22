@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Loja de Variedades</title>
+    <style>
+        :root {
+            --primary: #E91E63; /* Cor rosa para destaque (pode mudar) */
+            --dark: #333;
+            --light: #f4f4f4;
+            --white: #fff;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--light); padding-bottom: 80px; }
+        
+        /* Cabeçalho */
+        header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        header h1 { margin: 0; font-size: 1.2rem; }
+        
+        /* Navegação de Categorias */
+        .categories { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 10px; white-space: nowrap; border-bottom: 1px solid #ddd; }
+        .cat-btn { padding: 8px 16px; border: 1px solid var(--primary); border-radius: 20px; background: none; color: var(--primary); cursor: pointer; font-weight: bold; }
+        .cat-btn.active { background: var(--primary); color: white; }
+
+        /* Grade de Produtos */
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 10px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        
+        .product-card { background: white; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
+        .product-img { width: 100%; height: 120px; object-fit: cover; background: #eee; border-radius: 4px; margin-bottom: 8px; }
+        .product-title { font-size: 0.9rem; margin: 5px 0; color: var(--dark); font-weight: 600; }
+        .product-price { color: var(--primary); font-weight: bold; font-size: 1.1rem; margin-bottom: 8px; }
+        .btn-add { background: var(--primary); color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        /* Carrinho Flutuante */
+        .cart-float { position: fixed; bottom: 20px; right: 20px; background: #25D366; color: white; padding: 15px 25px; border-radius: 50px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: bold; z-index: 2000; transition: transform 0.2s; }
+        .cart-float:active { transform: scale(0.95); }
+        .cart-count { background: red; color: white; padding: 2px 8px; border-radius: 50%; font-size: 0.8rem; }
+
+        /* Modal do Carrinho */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; align-items: flex-end; }
+        .modal-content { background: white; width: 100%; max-width: 500px; height: 80vh; border-radius: 20px 20px 0 0; padding: 20px; margin: 0 auto; display: flex; flex-direction: column; animation: slideUp 0.3s; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+        .cart-items { flex: 1; overflow-y: auto; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .cart-footer { margin-top: 10px; border-top: 1px solid #eee; padding-top: 15px; }
+        .total-price { font-size: 1.2rem; font-weight: bold; text-align: right; display: block; margin-bottom: 15px; }
+        .btn-checkout { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .btn-close { background: #ddd; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="storeName">Variedades & Cia</h1>
+    </header>
+
+    <div class="categories" id="categoryFilters">
+        <button class="cat-btn active" onclick="filterProducts('todos')">Todos</button>
+        <button class="cat-btn" onclick="filterProducts('acessorios')">Acessórios</button>
+        <button class="cat-btn" onclick="filterProducts('utilidades')">Utilidades</button>
+        <button class="cat-btn" onclick="filterProducts('maquiagem')">Maquiagem</button>
+    </div>
+
+    <div class="container">
+        <div class="product-grid" id="productGrid">
+            </div>
+    </div>
+
+    <div class="cart-float" onclick="toggleCart()">
+        🛒 Ver Pedido <span class="cart-count" id="cartCount">0</span>
+    </div>
+
+    <div class="modal" id="cartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Seu Pedido</h2>
+                <button class="btn-close" onclick="toggleCart()">X</button>
+            </div>
+            <div class="cart-items" id="cartItems">
+                <p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>
+            </div>
+            <div class="cart-footer">
+                <span class="total-price">Total: R$ <span id="cartTotal">0,00</span></span>
+                <button class="btn-checkout" onclick="sendToWhatsApp()">Finalizar no WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DA LOJA ---
+        const WHATSAPP_NUMBER = "5573999999999"; // COLOQUE SEU NÚMERO AQUI (DDD + NÚMERO)
+
+        // --- LISTA DE PRODUTOS ---
+        // Você pode adicionar quantos produtos quiser seguindo o modelo abaixo
+        const products = [
+            { id: 1, name: "Kit Pincéis Sereia", price: 25.00, category: "maquiagem", img: "https://via.placeholder.com/150?text=Pinceis" },
+            { id: 2, name: "Garrafa Térmica Inox", price: 35.00, category: "utilidades", img: "https://via.placeholder.com/150?text=Garrafa" },
+            { id: 3, name: "Brinco Argola Dourada", price: 12.00, category: "acessorios", img: "https://via.placeholder.com/150?text=Brinco" },
+            { id: 4, name: "Organizador de Pia", price: 18.50, category: "utilidades", img: "https://via.placeholder.com/150?text=Organizador" },
+            { id: 5, name: "Paleta de Sombras Nude", price: 45.00, category: "maquiagem", img: "https://via.placeholder.com/150?text=Sombra" },
+            { id: 6, name: "Relógio Digital LED", price: 29.90, category: "acessorios", img: "https://via.placeholder.com/150?text=Relogio" },
+            { id: 7, name: "Pote Hermético Vidro", price: 22.00, category: "utilidades", img: "https://via.placeholder.com/150?text=Pote" },
+            { id: 8, name: "Batom Matte Vermelho", price: 15.00, category: "maquiagem", img: "https://via.placeholder.com/150?text=Batom" },
+        ];
+
+        let cart = [];
+
+        // Inicializar Loja
+        function initStore() {
+            renderProducts(products);
+        }
+
+        // Renderizar Produtos na Tela
+        function renderProducts(list) {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = list.map(p => `
+                <div class="product-card">
+                    <img src="${p.img}" alt="${p.name}" class="product-img">
+                    <div class="product-title">${p.name}</div>
+                    <div class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</div>
+                    <button class="btn-add" onclick="addToCart(${p.id})">Adicionar</button>
+                </div>
+            `).join('');
+        }
+
+        // Filtrar Categorias
+        function filterProducts(category) {
+            // Atualizar botões
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (category === 'todos') {
+                renderProducts(products);
+            } else {
+                const filtered = products.filter(p => p.category === category);
+                renderProducts(filtered);
+            }
+        }
+
+        // Adicionar ao Carrinho
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            const existingItem = cart.find(item => item.id === id);
+
+            if (existingItem) {
+                existingItem.qty++;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            updateCartUI();
+            
+            // Feedback visual rápido
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Adicionado!";
+            btn.style.background = "#25D366";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = "var(--primary)";
+            }, 1000);
+        }
+
+        // Atualizar Interface do Carrinho
+        function updateCartUI() {
+            document.getElementById('cartCount').innerText = cart.reduce((acc, item) => acc + item.qty, 0);
+            
+            const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+            document.getElementById('cartTotal').innerText = total.toFixed(2).replace('.', ',');
+
+            const cartList = document.getElementById('cartItems');
+            if (cart.length === 0) {
+                cartList.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
+            } else {
+                cartList.innerHTML = cart.map(item => `
+                    <div class="cart-item">
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <small>R$ ${item.price.toFixed(2).replace('.', ',')} x ${item.qty}</small>
+                        </div>
+                        <div>
+                            <button onclick="changeQty(${item.id}, -1)" style="padding:2px 8px;">-</button>
+                            <span style="margin:0 5px;">${item.qty}</span>
+                            <button onclick="changeQty(${item.id}, 1)" style="padding:2px 8px;">+</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Alterar Quantidade
+        function changeQty(id, delta) {
+            const item = cart.find(i => i.id === id);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    cart = cart.filter(i => i.id !== id);
+                }
+                updateCartUI();
+            }
+        }
+
+        // Abrir/Fechar Carrinho
+        function toggleCart() {
+            const modal = document.getElementById('cartModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // Enviar Pedido para WhatsApp
+        function sendToWhatsApp() {
+            if (cart.length === 0) return alert("Seu carrinho está vazio!");
+
+            let message = "*NOVO PEDIDO - LOJA DE VARIEDADES*\n\n";
+            cart.forEach(item => {
+                message += `▪ ${item.qty}x ${item.name} - R$ ${(item.price * item.qty).toFixed(2)}\n`;
+            });
+
+            const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+            message += `\n*TOTAL: R$ ${total.toFixed(2)}*`;
+            message += `\n\n------------------------------\nOlá, gostaria de confirmar este pedido!`;
+
+            const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('cartModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        initStore();
+    </script>
+</body>
+</html>
